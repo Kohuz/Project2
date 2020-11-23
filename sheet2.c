@@ -18,6 +18,7 @@ typedef struct {
 typedef struct {
     int no_of_rows;
     row_t* row ;
+    int cap;
 }table_t;
 
 row_t row_ctor(int no_of_columns) {
@@ -29,9 +30,10 @@ row_t row_ctor(int no_of_columns) {
 }
 table_t table_ctor(int no_of_rows) {
     table_t tab;
-    row_t *ptr = malloc(no_of_rows*sizeof(row_t));
+    row_t *ptr = malloc(no_of_rows * sizeof(row_t));
     tab.no_of_rows = no_of_rows;
     tab.row = ptr;
+    tab.cap = 1;
     return tab;
 }
 
@@ -40,11 +42,13 @@ void table_append(table_t *tab, int line_count, int cell_count){
     tab->row[line_count-1] = row;
 }
 
+
 int main(int argc, char* argv[]) {
     FILE* file;
     FILE* file2;
     FILE* file3;
-    int ch, ch2, ch3;
+    int ch;
+
     char* delim = " ";
     int line_count = 1, cell_count = 1;
     file2 = fopen(argv[1], "r");
@@ -97,7 +101,9 @@ int main(int argc, char* argv[]) {
     printf("%s\n", tab.row[2].column[0].content);
     printf("%s\n", tab.row[2].column[2].content);
 
-    free(tab.row->column);
+    for(int j = 0; j < tab.no_of_rows; j++){
+        free(tab.row[j].column);
+    }
     free(tab.row);
 
 
