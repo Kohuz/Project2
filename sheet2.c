@@ -49,6 +49,10 @@ void table_append(table_t *tab, int line_count, int cell_count){
     tab->row[line_count-1] = row;
     tab->no_of_rows++;
 }
+void print_table(table *tab, char delim){
+    for(int i = 0; i < tab->no)
+}
+//void table_insert(table *tab, i)
 void table_allocate(char* argv, char* delim, table_t *tab) {
     FILE* file;
     file = fopen(argv, "r");
@@ -214,11 +218,6 @@ int main(int argc, char* argv[]) {
     printf("%s\n", tab.row[1].column[0].content);
     printf("%s\n", tab.row[2].column[0].content);
     printf("%s\n", tab.row[2].column[2].content);
-
-//    for(int j = 0; j < tab.no_of_rows; j++){
-//        free(tab.row[j].column);
-//    }
-//    free(tab.row);
 
     table_dtor(&tab);
 
