@@ -71,7 +71,23 @@ void table_shrink(table_t *tab) {
     tab->row = realloc(tab->row, tab->no_of_rows * sizeof(row_t));
     tab->cap = tab->no_of_rows;
 }
+void column_shrink(table_t *tab) {
+    for(int i = 0; i < tab->no_of_rows; i++) {
+        for(int j = 0; j < tab->row[i].no_of_columns; j++) {
+            tab->row[i].column = realloc(tab->row[i].column, tab->row[i].no_of_columns * sizeof(cell_t));
+            tab->row[i].cap = tab->row[i].no_of_columns;
+        }
+    }
+}
 
+void row_resize(table_t *tab) {
+    for(int i = 0; i < tab->no_of_rows; i++) {
+        for(int j = 0; j < tab->row[i].no_of_columns; j++) {
+            tab->row[i].column = realloc(tab->row[i].column, tab->row[i].cap * 2 * sizeof(cell_t));
+            tab->row[i].cap *= 2;
+        }
+    }
+}
 void table_allocate(char* argv, char* delim, table_t *tab) {
     FILE* file;
     file = fopen(argv, "r");
@@ -229,14 +245,7 @@ void parse_args(char*argv, commands *comms_array, int* comm_counter) {
     *comm_counter = help;
 
 }
-void row_resize(table_t *tab) {
-    for(int i = 0; i < tab->no_of_rows; i++) {
-        for(int j = 0; j < tab->row[i].no_of_columns; j++) {
-                tab->row[i].column = realloc(tab->row[i].column, tab->row[i].cap * 2 * sizeof(cell_t));
-                tab->row[i].cap *= 2;
-        }
-    }
-}
+
 
 void irow(table_t *tab, char sel) {
     int rsel = sel - '0';
@@ -257,6 +266,28 @@ void irow(table_t *tab, char sel) {
     tab->row[rsel] = row_ctor(tab->row[0].no_of_columns);
     for(int j = 0; j < tab->row[rsel].no_of_columns; j++)
             strcpy(tab->row[rsel].column[j].content, "");
+
+    tab->no_of_rows++;
+}
+void arow(table_t *tab, char sel) {
+    int rsel = sel - '0';
+
+    if(tab->cap == tab->no_of_rows)
+        table_resize(tab);
+//    if(rsel > tab->cap)
+//        table_resize(tab);
+//    for(int i = tab->no_of_rows; i < rsel; i++) {
+//            table_append(tab,tab->no_of_rows, tab->row[i].no_of_columns);
+//            for(int j = 0; j < tab->row[i].no_of_columns; j++)
+//                strcpy(tab->row[i].column[j].content, ":");
+//    }
+
+
+    for(int i = tab->no_of_rows -1; i >= rsel; i--)
+        tab->row[i+1] = tab->row[i];
+    tab->row[rsel] = row_ctor(tab->row[0].no_of_columns);
+    for(int j = 0; j < tab->row[rsel].no_of_columns; j++)
+        strcpy(tab->row[rsel].column[j].content, "");
 
     tab->no_of_rows++;
 }
@@ -281,8 +312,29 @@ void icol(table_t *tab, char sel) {
     for(int i = 0; i < tab->no_of_rows; i++) {
         strcpy(tab->row[i].column[rsel].content, "");
     }
-
-
+}
+void acol(table_t *tab, char sel) { //TODO fix right edgecase
+    int rsel = sel - '0';
+    row_resize(tab);
+    for(int i = 0; i < tab->no_of_rows; i++) {
+        for(int j = tab->row[i].no_of_columns -1; j >= rsel; j--) {
+            tab->row[i].column[j + 1] = tab->row[i].column[j];
+        }
+        tab->row[i].no_of_columns++;
+    }
+    for(int i = 0; i < tab->no_of_rows; i++) {
+        strcpy(tab->row[i].column[rsel].content, "");
+    }
+}
+void dcol(table_t *tab, char sel) {
+    int rsel = sel - '0';
+    rsel -= 1;
+    for(int i = 0; i < tab->no_of_rows; i++) {
+        for(int j = rsel; j < tab->row[i].no_of_columns; j++)
+            tab->row[i].column[j] = tab->row[i].column[j + 1];
+        tab->row[i].no_of_columns--;
+    }
+    column_shrink(tab);
 
 }
 void process_commands(table_t *tab,commands *comms_array, int comm_counter) {
@@ -293,8 +345,17 @@ void process_commands(table_t *tab,commands *comms_array, int comm_counter) {
         if(!strcmp(comms_array[i].command, "drow")) {
             drow(tab, comms_array[i].row_sel);
         }
+        if(!strcmp(comms_array[i].command, "arow")) {
+            arow(tab, comms_array[i].row_sel);
+        }
         if(!strcmp(comms_array[i].command, "icol")) {
             icol(tab, comms_array[i].col_sel);
+        }
+        if(!strcmp(comms_array[i].command, "acol")) {
+            acol(tab, comms_array[i].col_sel);
+        }
+        if(!strcmp(comms_array[i].command, "dcol")) {
+            dcol(tab, comms_array[i].col_sel);
         }
 
     }
