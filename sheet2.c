@@ -60,6 +60,7 @@ void print_table(table_t *tab, char delim){
             else
                 printf(":%s", tab->row[i].column[j].content);
         }
+        putchar('\n');
     }
 }
 void table_resize(table_t *tab) {
@@ -98,7 +99,7 @@ void read_table(char* argv, char* delim,table_t *tab) {
     int ch;
     int i = 0, cur_line = 0, cur_cell = 0;
     while((ch = fgetc(file)) != EOF) {
-        if(ch != delim[0])
+        if(ch != delim[0] && ch != '\n')
          tab->row[cur_line].column[cur_cell].content[i] = ch;
         i++;
         if(strchr(delim,ch)) {
@@ -228,6 +229,14 @@ void parse_args(char*argv, commands *comms_array, int* comm_counter) {
     *comm_counter = help;
 
 }
+void row_resize(table_t *tab) {
+    for(int i = 0; i < tab->no_of_rows; i++) {
+        for(int j = 0; j < tab->row[i].no_of_columns; j++) {
+                tab->row[i].column = realloc(tab->row[i].column, tab->row[i].cap * 2 * sizeof(cell_t));
+                tab->row[i].cap *= 2;
+        }
+    }
+}
 
 void irow(table_t *tab, char sel) {
     int rsel = sel - '0';
@@ -246,14 +255,9 @@ void irow(table_t *tab, char sel) {
     for(int i = tab->no_of_rows -1; i >= rsel; i--)
         tab->row[i+1] = tab->row[i];
     tab->row[rsel] = row_ctor(tab->row[0].no_of_columns);
-    for(int j = 0; j < tab->row[rsel].no_of_columns; j++) {
-        if(j != tab->row[rsel].no_of_columns - 1) {
+    for(int j = 0; j < tab->row[rsel].no_of_columns; j++)
             strcpy(tab->row[rsel].column[j].content, "");
-            }
-        else {
-            tab->row[rsel].column[j].content[0] = '\n';
-        }
-    }
+
     tab->no_of_rows++;
 }
 void drow(table_t *tab, char sel) { // TODO leaking memory
@@ -264,6 +268,23 @@ void drow(table_t *tab, char sel) { // TODO leaking memory
     tab->no_of_rows--;
     table_shrink(tab);
 }
+void icol(table_t *tab, char sel) {
+    int rsel = sel - '0';
+    rsel -= 1;
+    row_resize(tab);
+    for(int i = 0; i < tab->no_of_rows; i++) {
+        for(int j = tab->row[i].no_of_columns -1; j >= rsel; j--) {
+            tab->row[i].column[j + 1] = tab->row[i].column[j];
+        }
+        tab->row[i].no_of_columns++;
+    }
+    for(int i = 0; i < tab->no_of_rows; i++) {
+        strcpy(tab->row[i].column[rsel].content, "");
+    }
+
+
+
+}
 void process_commands(table_t *tab,commands *comms_array, int comm_counter) {
     for(int i = 0; i < comm_counter; i++) {
         if(!strcmp(comms_array[i].command, "irow")) {
@@ -272,6 +293,10 @@ void process_commands(table_t *tab,commands *comms_array, int comm_counter) {
         if(!strcmp(comms_array[i].command, "drow")) {
             drow(tab, comms_array[i].row_sel);
         }
+        if(!strcmp(comms_array[i].command, "icol")) {
+            icol(tab, comms_array[i].col_sel);
+        }
+
     }
 }
 
@@ -304,7 +329,7 @@ int main(int argc, char* argv[]) {
 
 
 
-    print_table(&tab, ' ');
+    print_table(&tab, ':');
     table_dtor(&tab);
 
 
