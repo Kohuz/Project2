@@ -21,14 +21,9 @@ typedef struct {
     int cap;
 }table_t;
 
-typedef struct {
-    char col_sel;
-    char row_sel;
-    char spec_sel[100];
-    char command[100];
-}commands;
 
 row_t row_ctor(int no_of_columns) {
+    //Allocates memory of a row
     row_t row;
     cell_t *ptr = malloc(no_of_columns*sizeof(cell_t));
     if(ptr == NULL){
@@ -39,6 +34,7 @@ row_t row_ctor(int no_of_columns) {
     row.cap = no_of_columns;
     return row;
 }
+//Allocates memory for the one line table
 table_t table_ctor(int no_of_rows) {
     table_t tab;
     row_t *ptr = malloc(no_of_rows*sizeof(row_t));
@@ -51,7 +47,7 @@ table_t table_ctor(int no_of_rows) {
     tab.cap = 1;
     return tab;
 }
-
+//Allocates the memory for row at the end of the table
 void table_append(table_t *tab, int line_count, int cell_count){
     tab->no_of_rows++;
     row_t row = row_ctor(cell_count);
@@ -73,13 +69,14 @@ void print_table(table_t *tab, char delim, char* argv){
             if(j == 0)
                 fprintf(file,"%s", tab->row[i].column[j].content);
             else
-                fprintf(file,":%s", tab->row[i].column[j].content);
+                fprintf(file,"%c%s",delim, tab->row[i].column[j].content);
         }
         fprintf(file, "\n");
     }
 }
 
 void table_resize(table_t *tab, int by) {
+    //Reallocs the memory by the given number
     void* help;
     help = realloc(tab->row, by * tab->cap * sizeof(row_t));
     if(help == NULL){
@@ -139,15 +136,27 @@ int table_allocate(char* argv, char* delim, table_t *tab) {
     fclose(file);
     return 0;
 }
-int read_table(char* argv, char* delim,table_t *tab) {
+void table_dtor(table_t *tab) {
+    //Frees the memory allocated for the table
+    for(int j = 0; j < tab->cap; j++){
+        free(tab->row[j].column);
+    }
+    free(tab->row);
+
+}
+int read_table(char* argv, char* delim, table_t *tab) {
+    //Opens the file and reads the contents of the file into the tab structure
     FILE* file;
     file = fopen(argv, "r");
-    if(file == NULL)
-        return 1;
+    if(file == NULL){
+        table_dtor(tab);
+        fprintf(stderr, "Malloc failed");
+        exit(EXIT_FAILURE);
+    }
     int ch;
     int i = 0, cur_line = 0, cur_cell = 0;
     while((ch = fgetc(file)) != EOF) {
-        if(ch != delim[0] && ch != '\n' && ch != '\\')
+        if(ch != delim[0] && ch != '\n')
             tab->row[cur_line].column[cur_cell].content[i] = ch;
         i++;
         if(strchr(delim,ch)) {
@@ -163,13 +172,7 @@ int read_table(char* argv, char* delim,table_t *tab) {
     }
     fclose(file);
 }
-void table_dtor(table_t *tab) {
-    for(int j = 0; j < tab->cap; j++){
-        free(tab->row[j].column);
-    }
-    free(tab->row);
 
-}
 
 int check_sel(char* arg){
     printf("This is a selection: %s\n", arg);
@@ -218,19 +221,7 @@ int check_commands(char* arg) {
         return 1;
     return 0;
 }
-int validate_arguments(char arguments[5000][30], int len){
-    for(int i = 0; i < len; i++){
-        if(i%2 == 0) {
-            if(check_sel(arguments[i]))
-                return 1; // validation failed
 
-        }
-        else
-        if(check_commands(arguments[i]))
-            return 1; // validation failed
-    }
-    return 0;
-}
 
 
 void split_sel(char* rowsel, char* colsel, char* sel) {
@@ -546,13 +537,14 @@ void swap(table_t *tab, char* sel1, char* sel2, char* arg) {
     strcpy(tab->row[ridx2].column[cidx2].content, tmp_cell);
 }
 void process_commands(table_t *tab, char* argv) {
-
+    //Handle all the commands, search for selection
     char *token;
     char *s = ";";
     char current_selection[30];
     char* rest = argv;
     char current_row_selection[30];
     char current_col_selection[30];
+    //Splits the CMD sequence into tokens based on the ";" character
     while ((token = strtok_r(rest, s, &rest))) {
 //        if(!strcmp("[max]", token)) {
 //            strcpy(current_row_selection, token);
@@ -569,6 +561,7 @@ void process_commands(table_t *tab, char* argv) {
 
 
         if(token[0] == '[') {
+            //Parses the selection
             split_sel(current_row_selection, current_col_selection, token);
         }
 //            if (token[1] == '_' || (token[1] >= '0' && token[1] <= '9'))
@@ -618,6 +611,7 @@ void process_commands(table_t *tab, char* argv) {
 int main(int argc, char* argv[]) {
     char delim[100] = " ";
     int arg_idx = 2;
+    //Check for a delimeter, adjust arg_idx
     if (strcmp("-d", argv[1]) == 0) {
         if(argv[2]) {
             strcpy(delim, argv[2]);
@@ -634,15 +628,19 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "Not enough arguments\n");
         return 1;
     }
-//    parse_args(argv[2],comms_array, &comm_counter);//TEMPORARY ARGV[1] = FILE, ARGV[2] = CMDSEQUENCE
+    //Create a one line table
     table_t tab = table_ctor(1);
+    //Allocate enough space to read the table
     if(table_allocate(argv[arg_idx], delim, &tab)) {
         fprintf(stderr, "Couldn't find file");
         return 1;
     }
+    //Read the table by characters
     read_table(argv[arg_idx], delim, &tab);
+    //Process given commands
     process_commands(&tab, argv[arg_idx-1]);
     print_table(&tab, delim[0], argv[arg_idx]);
+    //Free all memory
     table_dtor(&tab);
 
     return 0;
